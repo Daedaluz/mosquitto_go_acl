@@ -2,15 +2,36 @@ package main
 
 import(
 	"fmt"
+	"time"
 )
+
+var (
+	exit chan bool
+)
+
+func Ticker() {
+	ticker := time.NewTicker(time.Second * 1)
+	for {
+		select {
+		case <-exit:
+			fmt.Println("Time to quit!")
+			return
+		case tick := <-ticker.C:
+			fmt.Println("Tick!", tick)
+		}
+	}
+}
 
 func PluginInit(opts map[string]string) bool {
 	fmt.Println("PluginInit")
+	exit = make(chan bool)
+	go Ticker()
 	return true
 }
 
 func PluginCleanup(opts map[string]string) bool {
 	fmt.Println("PluginCleanup")
+	exit <- true
 	return true
 }
 
