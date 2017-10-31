@@ -24,6 +24,9 @@ func Ticker() {
 
 func PluginInit(opts map[string]string) bool {
 	fmt.Println("PluginInit")
+	for key, value := range opts {
+		fmt.Println(key, value)
+	}
 	exit = make(chan bool)
 	go Ticker()
 	return true
