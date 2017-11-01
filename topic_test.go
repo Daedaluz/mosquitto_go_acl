@@ -17,6 +17,7 @@ var SubCases = []SubCase{
 	{"hello/world", "hello/+", true},
 	{"hello/world", "hello/#", true},
 	{"hello/world", "hello/world/#", true},
+	{"///", "///", true},
 
 	{"hello/world", "hello/world/toolong", false},
 	{"hello/world", "hello/world/+", false},
