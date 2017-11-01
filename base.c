@@ -1,6 +1,13 @@
 #define bool _Bool
 #include <mosquitto_plugin.h>
 #include "auth.h"
+
+extern void mosquitto_log_printf(int, const char*, ...);
+
+void mosquitto_log(int lvl, char* str) {
+	mosquitto_log_printf(lvl, "%s", str);
+}
+
 int mosquitto_auth_acl_check(void* udata, const char* client_id, const char* username, const char* topic, int access) {
 	return go_mosquitto_auth_acl_check(udata, (char*)client_id, (char*)username, (char*)topic, access);
 }

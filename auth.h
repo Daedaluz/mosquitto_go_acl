@@ -7,9 +7,13 @@
 
 #line 2 "/home/tux/mqtt_plugin/base.go"
 
+
 #define bool _Bool
+#include <malloc.h>
 #include <mosquitto.h>
 #include <mosquitto_plugin.h>
+
+void mosquitto_log(int lvl, char* msg);
 
 #line 1 "cgo-generated-wrapper"
 

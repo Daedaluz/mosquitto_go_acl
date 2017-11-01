@@ -23,7 +23,7 @@ func Ticker() {
 }
 
 func PluginInit(opts map[string]string) bool {
-	fmt.Println("PluginInit")
+	Log(MOSQ_LOG_ERR, "Hello world!")
 	for key, value := range opts {
 		fmt.Println(key, value)
 	}

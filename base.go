@@ -1,14 +1,19 @@
 package main
+//#cgo LDFLAGS: -Wl,-unresolved-symbols=ignore-all
 /*
 #define bool _Bool
+#include <malloc.h>
 #include <mosquitto.h>
 #include <mosquitto_plugin.h>
+
+void mosquitto_log(int lvl, char* msg);
 */
 import "C"
 
 import(
 	"unsafe"
 	"reflect"
+	"strings"
 )
 
 const(
@@ -38,6 +43,43 @@ const (
 	MOSQ_ERR_PROXY = C.MOSQ_ERR_PROXY
 )
 
+const (
+	MOSQ_LOG_INFO = C.MOSQ_LOG_INFO
+	MOSQ_LOG_NOICE = C.MOSQ_LOG_NOTICE
+	MOSQ_LOG_WARNING = C.MOSQ_LOG_WARNING
+	MOSQ_LOG_ERR = C.MOSQ_LOG_ERR
+	MOSQ_LOG_DEBUG = C.MOSQ_LOG_DEBUG
+)
+
+func Match(t string, sub string) bool {
+	subsplit := strings.Split(sub, "/")
+	topsplit := strings.Split(t, "/")
+
+	for i, psub := range subsplit {
+		if i < len(topsplit) {
+			switch psub {
+				case "#":
+					return true
+				case "+":
+					continue
+				case topsplit[i]:
+					continue
+				default:
+					return false
+			}
+		} else {
+			if psub == "#" {
+				return true
+			}
+			return false
+		}
+	}
+	if len(subsplit) < len(topsplit) {
+		return false
+	}
+	return true
+}
+
 //export mosquitto_auth_plugin_version
 func mosquitto_auth_plugin_version() C.int {
 	return C.MOSQ_AUTH_PLUGIN_VERSION
@@ -59,6 +101,12 @@ func optSliceToMap(slice []C.struct_mosquitto_auth_opt) map[string]string {
 		optmap[C.GoString(opt.key)] = C.GoString(opt.value)
 	}
 	return optmap
+}
+
+func Log(lvl int, msg string) {
+	cmsg := C.CString(msg)
+	C.mosquitto_log(C.int(lvl), cmsg)
+	C.free(unsafe.Pointer(cmsg))
 }
 
 //export mosquitto_auth_plugin_init
