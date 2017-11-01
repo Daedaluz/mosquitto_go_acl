@@ -18,6 +18,8 @@ var SubCases = []SubCase{
 	{"hello/world", "hello/#", true},
 	{"hello/world", "hello/world/#", true},
 	{"///", "///", true},
+	{"", "", true},
+	{"", "/#", true},
 
 	{"hello/world", "hello/world/toolong", false},
 	{"hello/world", "hello/world/+", false},
@@ -29,6 +31,8 @@ var SubCases = []SubCase{
 	{"hello/world", "hello/+/mismatch", false},
 	{"hello/world", "hello/+/mismatch", false},
 
+	{"/", "", false},
+	{"", "/", false},
 	{"///", "//", false},
 	{"///", "////", false},
 }
@@ -37,7 +41,7 @@ func TestSubs(t *testing.T) {
 	for _, test := range SubCases {
 		result := Match(test.Topic, test.Subsc)
 		if result != test.Expect {
-			t.Errorf("%s - %s should return %v", test.Topic, test.Subsc, test.Expect)
+			t.Errorf("\"%s\" - \"%s\" should return %v", test.Topic, test.Subsc, test.Expect)
 		}
 	}
 }
