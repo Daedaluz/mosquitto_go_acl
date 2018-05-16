@@ -1,21 +1,33 @@
 #define bool _Bool
+#include <stdio.h>
+#include <mosquitto.h>
 #include <mosquitto_plugin.h>
-#include "auth.h"
 
 extern void mosquitto_log_printf(int, const char*, ...);
+
+extern int go_mosquitto_auth_acl_check(int, struct mosquitto*, struct mosquitto_acl_msg*);
+extern int go_mosquitto_auth_unpwd_check(struct mosquitto*, char*, char*);
+extern int go_mosquitto_auth_psk_key_get(struct mosquitto*, char*, char*, char*, int);
 
 void mosquitto_log(int lvl, char* str) {
 	mosquitto_log_printf(lvl, "%s", str);
 }
 
-int mosquitto_auth_acl_check(void* udata, const char* client_id, const char* username, const char* topic, int access) {
-	return go_mosquitto_auth_acl_check(udata, (char*)client_id, (char*)username, (char*)topic, access);
+bool topic_match(char* sub, char* topic) {
+	bool res;
+	mosquitto_topic_matches_sub(sub, topic, &res);
+	return res;
 }
 
-int mosquitto_auth_unpwd_check(void* udata, const char* username, const char* password) {
-	return go_mosquitto_auth_unpwd_check(udata, (char*)username, (char*)password);
+int mosquitto_auth_acl_check(void* udata, int access, const struct mosquitto* client, struct mosquitto_acl_msg *msg) {
+	return go_mosquitto_auth_acl_check(access, (struct mosquitto*)client, msg);
 }
 
-int mosquitto_auth_psk_key_get(void* udata, const char* hint, const char* identity, char* key, int max_key_len) {
-	return go_mosquitto_auth_psk_key_get(udata, (char*)hint, (char*)identity, key, max_key_len);
+int mosquitto_auth_unpwd_check(void* udata, const struct mosquitto *client, const char* username, const char* password) {
+	return go_mosquitto_auth_unpwd_check((struct mosquitto*) client, (char*)username, (char*)password);
 }
+
+int mosquitto_auth_psk_key_get(void* udata, const struct mosquitto *client, const char* hint, const char* identity, char* key, int max_key_len) {
+	return go_mosquitto_auth_psk_key_get((struct mosquitto*)client, (char*)hint, (char*)identity, key, max_key_len);
+}
+

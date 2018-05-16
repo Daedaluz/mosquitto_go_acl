@@ -1,60 +1,41 @@
 package main
 
-import(
-	"fmt"
-	"time"
+import (
 )
 
 var (
-	exit chan bool
 )
 
-func Ticker() {
-	ticker := time.NewTicker(time.Second * 1)
-	for {
-		select {
-		case <-exit:
-			fmt.Println("Time to quit!")
-			return
-		case tick := <-ticker.C:
-			fmt.Println("Tick!", tick)
-		}
+func PluginInit(argopts map[string]string) bool {
+	Logf(MOSQ_LOG_INFO, "Hello from PluginInit")
+	for option, value := range argopts {
+		Logf(MOSQ_LOG_INFO, "Option %s = %s", option, value)
 	}
-}
-
-func PluginInit(opts map[string]string) bool {
-	Log(MOSQ_LOG_ERR, "Hello world!")
-	for key, value := range opts {
-		fmt.Println(key, value)
-	}
-	exit = make(chan bool)
-	go Ticker()
 	return true
 }
 
 func PluginCleanup(opts map[string]string) bool {
-	fmt.Println("PluginCleanup")
-	exit <- true
+	Logf(MOSQ_LOG_INFO, "Bye from PluginCleanup")
 	return true
 }
 
+func ACLCheck(client *Client, access int, topic string, payload []byte, qos int, retain bool) bool {
+	Logf(MOSQ_LOG_INFO, "ACL Check %s", topic)
+	return true
+}
+
+func UnpwdCheck(client *Client, username, password string) int {
+	Logf(MOSQ_LOG_INFO, "User %s was granted acces", username)
+	return MOSQ_ERR_SUCCESS
+	// return MOSQ_ERR_AUTH
+}
+
 func SecurityInit(opts map[string]string, reload bool) bool {
-	fmt.Println("SecurityInit")
+	Logf(MOSQ_LOG_INFO, "Security init, reload = %v", reload)
 	return true
 }
 
 func SecurityCleanup(opts map[string]string, reload bool) bool {
-	fmt.Println("SecurityCleanup")
+	Logf(MOSQ_LOG_INFO, "Security cleanup, reload = %v", reload)
 	return true
 }
-
-func ACLCheck(client_id, username, topic string, access int) bool {
-	fmt.Println("ACL Check", client_id, username, topic, access)
-	return true
-}
-
-func UnpwdCheck(username, password string) int {
-	fmt.Println("Unpwd Check", username, password)
-	return MOSQ_ERR_SUCCESS
-}
-

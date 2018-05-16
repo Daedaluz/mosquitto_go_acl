@@ -1,5 +1,6 @@
 package main
-//#cgo LDFLAGS: -Wl,-unresolved-symbols=ignore-all
+
+//#cgo LDFLAGS: -Wl,-unresolved-symbols=ignore-all -lmosquitto
 /*
 #define bool _Bool
 #include <malloc.h>
@@ -7,86 +8,52 @@ package main
 #include <mosquitto_plugin.h>
 
 void mosquitto_log(int lvl, char* msg);
+bool topic_match(char* sub, char* topic);
+
+extern char* mosquitto_client_address(const struct mosquitto *client);
+extern bool mosquitto_client_clean_session(const struct mosquitto *client);
+extern char *mosquitto_client_id(const struct mosquitto *client);
+extern int mosquitto_client_keepalive(const struct mosquitto *client);
+extern int mosquitto_client_protocol(const struct mosquitto *client);
+extern int mosquitto_client_sub_count(const struct mosquitto *client);
+extern char* mosquitto_client_username(const struct mosquitto *context);
+
 */
 import "C"
 
-import(
-	"unsafe"
+import (
+	"fmt"
 	"reflect"
-	"strings"
-)
-
-const(
-	MOSQ_ACL_READ = C.MOSQ_ACL_READ
-	MOSQ_ACL_WRITE = C.MOSQ_ACL_WRITE
-	MOSQ_ACL_NONE = C.MOSQ_ACL_NONE
+	"unsafe"
 )
 
 const (
-	MOSQ_ERR_CONN_PENDING = C.MOSQ_ERR_CONN_PENDING
-	MOSQ_ERR_SUCCESS = C.MOSQ_ERR_SUCCESS
-	MOSQ_ERR_NOMEM = C.MOSQ_ERR_NOMEM
-	MOSQ_ERR_PROTOCOL = C.MOSQ_ERR_PROTOCOL
-	MOSQ_ERR_INVAL = C.MOSQ_ERR_INVAL
-	MOSQ_ERR_NO_CONN = C.MOSQ_ERR_NO_CONN
-	MOSQ_ERR_CONN_REFUSED = C.MOSQ_ERR_CONN_REFUSED
-	MOSQ_ERR_NOT_FOUND = C.MOSQ_ERR_NOT_FOUND
-	MOSQ_ERR_CONN_LOST = C.MOSQ_ERR_CONN_LOST
-	MOSQ_ERR_TLS = C.MOSQ_ERR_TLS
-	MOSQ_ERR_PAYLOAD_SIZE = C.MOSQ_ERR_PAYLOAD_SIZE
+	MOSQ_ACL_READ      = C.MOSQ_ACL_READ
+	MOSQ_ACL_WRITE     = C.MOSQ_ACL_WRITE
+	MOSQ_ACL_NONE      = C.MOSQ_ACL_NONE
+	MOSQ_ACL_SUBSCRIBE = C.MOSQ_ACL_SUBSCRIBE
+)
+
+const (
+	MOSQ_ERR_SUCCESS       = C.MOSQ_ERR_SUCCESS
+	MOSQ_ERR_PROTOCOL      = C.MOSQ_ERR_PROTOCOL
 	MOSQ_ERR_NOT_SUPPORTED = C.MOSQ_ERR_NOT_SUPPORTED
-	MOSQ_ERR_AUTH = C.MOSQ_ERR_AUTH
-	MOSQ_ERR_ACL_DENIED = C.MOSQ_ERR_ACL_DENIED
-	MOSQ_ERR_UNKNOWN = C.MOSQ_ERR_UNKNOWN
-	MOSQ_ERR_ERRNO = C.MOSQ_ERR_ERRNO
-	MOSQ_ERR_EAI = C.MOSQ_ERR_EAI
-	MOSQ_ERR_PROXY = C.MOSQ_ERR_PROXY
+	MOSQ_ERR_AUTH          = C.MOSQ_ERR_AUTH
+	MOSQ_ERR_ACL_DENIED    = C.MOSQ_ERR_ACL_DENIED
+	MOSQ_ERR_UNKNOWN       = C.MOSQ_ERR_UNKNOWN
 )
 
 const (
-	MOSQ_LOG_INFO = C.MOSQ_LOG_INFO
-	MOSQ_LOG_NOICE = C.MOSQ_LOG_NOTICE
+	MOSQ_LOG_INFO    = C.MOSQ_LOG_INFO
+	MOSQ_LOG_NOTICE  = C.MOSQ_LOG_NOTICE
 	MOSQ_LOG_WARNING = C.MOSQ_LOG_WARNING
-	MOSQ_LOG_ERR = C.MOSQ_LOG_ERR
-	MOSQ_LOG_DEBUG = C.MOSQ_LOG_DEBUG
+	MOSQ_LOG_ERR     = C.MOSQ_LOG_ERR
+	MOSQ_LOG_DEBUG   = C.MOSQ_LOG_DEBUG
 )
 
-func Match(t string, sub string) bool {
-	subsplit := strings.Split(sub, "/")
-	topsplit := strings.Split(t, "/")
-
-	for i, psub := range subsplit {
-		if i < len(topsplit) {
-			switch psub {
-				case "#":
-					return true
-				case "+":
-					continue
-				case topsplit[i]:
-					continue
-				default:
-					return false
-			}
-		} else {
-			if psub == "#" {
-				return true
-			}
-			return false
-		}
-	}
-	if len(subsplit) < len(topsplit) {
-		return false
-	}
-	return true
-}
-
-//export mosquitto_auth_plugin_version
-func mosquitto_auth_plugin_version() C.int {
-	return C.MOSQ_AUTH_PLUGIN_VERSION
-}
-
-func toOptSlice(opts *C.struct_mosquitto_auth_opt, optcount C.int) []C.struct_mosquitto_auth_opt {
-	var Opts []C.struct_mosquitto_auth_opt
+// Helper functions
+func toOptSlice(opts *C.struct_mosquitto_opt, optcount C.int) []C.struct_mosquitto_opt {
+	var Opts []C.struct_mosquitto_opt
 
 	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&Opts)))
 	sliceHeader.Cap = int(optcount)
@@ -95,7 +62,7 @@ func toOptSlice(opts *C.struct_mosquitto_auth_opt, optcount C.int) []C.struct_mo
 	return Opts
 }
 
-func optSliceToMap(slice []C.struct_mosquitto_auth_opt) map[string]string {
+func optSliceToMap(slice []C.struct_mosquitto_opt) map[string]string {
 	optmap := map[string]string{}
 	for _, opt := range slice {
 		optmap[C.GoString(opt.key)] = C.GoString(opt.value)
@@ -103,14 +70,39 @@ func optSliceToMap(slice []C.struct_mosquitto_auth_opt) map[string]string {
 	return optmap
 }
 
+// Expose log functions within mosquitto
 func Log(lvl int, msg string) {
 	cmsg := C.CString(msg)
 	C.mosquitto_log(C.int(lvl), cmsg)
 	C.free(unsafe.Pointer(cmsg))
 }
 
+func Logf(lvl int, msg string, v ...interface{}) {
+	fmsg := fmt.Sprintf(msg, v...)
+	cmsg := C.CString(fmsg)
+	C.mosquitto_log(C.int(lvl), cmsg)
+	C.free(unsafe.Pointer(cmsg))
+}
+
+// Use mosquittos own pattern matching
+func Match(t, sub string) bool {
+	c_t := C.CString(t)
+	c_sub := C.CString(sub)
+	res := C.topic_match(c_sub, c_t)
+	C.free(unsafe.Pointer(c_t))
+	C.free(unsafe.Pointer(c_sub))
+	return bool(res)
+}
+
+// AUTH implenetation
+
+//export mosquitto_auth_plugin_version
+func mosquitto_auth_plugin_version() C.int {
+	return C.MOSQ_AUTH_PLUGIN_VERSION
+}
+
 //export mosquitto_auth_plugin_init
-func mosquitto_auth_plugin_init(userdata *unsafe.Pointer, opts *C.struct_mosquitto_auth_opt, optcount C.int) C.int {
+func mosquitto_auth_plugin_init(userdata *unsafe.Pointer, opts *C.struct_mosquitto_opt, optcount C.int) C.int {
 	optslice := toOptSlice(opts, optcount)
 	optmap := optSliceToMap(optslice)
 
@@ -122,7 +114,7 @@ func mosquitto_auth_plugin_init(userdata *unsafe.Pointer, opts *C.struct_mosquit
 }
 
 //export mosquitto_auth_plugin_cleanup
-func mosquitto_auth_plugin_cleanup(userdata unsafe.Pointer, opts *C.struct_mosquitto_auth_opt, optcount C.int) C.int {
+func mosquitto_auth_plugin_cleanup(userdata unsafe.Pointer, opts *C.struct_mosquitto_opt, optcount C.int) C.int {
 	optslice := toOptSlice(opts, optcount)
 	optmap := optSliceToMap(optslice)
 	x := PluginCleanup(optmap)
@@ -133,7 +125,7 @@ func mosquitto_auth_plugin_cleanup(userdata unsafe.Pointer, opts *C.struct_mosqu
 }
 
 //export mosquitto_auth_security_init
-func mosquitto_auth_security_init(userdata unsafe.Pointer, opts *C.struct_mosquitto_auth_opt, optcount C.int, reload C.bool) C.int {
+func mosquitto_auth_security_init(userdata unsafe.Pointer, opts *C.struct_mosquitto_opt, optcount C.int, reload C.bool) C.int {
 	optslice := toOptSlice(opts, optcount)
 	optmap := optSliceToMap(optslice)
 
@@ -145,7 +137,7 @@ func mosquitto_auth_security_init(userdata unsafe.Pointer, opts *C.struct_mosqui
 }
 
 //export mosquitto_auth_security_cleanup
-func mosquitto_auth_security_cleanup(userdata unsafe.Pointer, opts *C.struct_mosquitto_auth_opt, optcount C.int, reload C.bool) C.int {
+func mosquitto_auth_security_cleanup(userdata unsafe.Pointer, opts *C.struct_mosquitto_opt, optcount C.int, reload C.bool) C.int {
 	optslice := toOptSlice(opts, optcount)
 	optmap := optSliceToMap(optslice)
 
@@ -157,24 +149,81 @@ func mosquitto_auth_security_cleanup(userdata unsafe.Pointer, opts *C.struct_mos
 }
 
 //export go_mosquitto_auth_acl_check
-func go_mosquitto_auth_acl_check(userdata unsafe.Pointer, client_id, username, topic *C.char, access C.int) C.int {
-	x := ACLCheck(C.GoString(client_id), C.GoString(username), C.GoString(topic), int(access))
-	if x {
-		return C.int(0)
+func go_mosquitto_auth_acl_check(access C.int, client *C.struct_mosquitto, msg *C.struct_mosquitto_acl_msg) int {
+	c := &Client{
+		c: client,
 	}
-	return C.int(1)
+
+	var Payload []byte
+	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&Payload)))
+	sliceHeader.Cap = int(msg.payloadlen)
+	sliceHeader.Len = int(msg.payloadlen)
+	sliceHeader.Data = uintptr(unsafe.Pointer(msg.payload))
+
+	x := ACLCheck(c, int(access), C.GoString(msg.topic), Payload, int(msg.qos), bool(msg.retain))
+	if x {
+		return C.MOSQ_ERR_SUCCESS
+	} else {
+		return C.MOSQ_ERR_ACL_DENIED
+	}
 }
 
 //export go_mosquitto_auth_unpwd_check
-func go_mosquitto_auth_unpwd_check(userdata unsafe.Pointer, username, password *C.char) C.int {
-	x := UnpwdCheck(C.GoString(username), C.GoString(password))
+func go_mosquitto_auth_unpwd_check(client *C.struct_mosquitto, username, password *C.char) C.int {
+	c := &Client{
+		c: client,
+	}
+	x := UnpwdCheck(c, C.GoString(username), C.GoString(password))
 	return C.int(x)
 }
 
 //export go_mosquitto_auth_psk_key_get
-func go_mosquitto_auth_psk_key_get(userdata unsafe.Pointer, hint, identity, key *C.char, max_key_len C.int) C.int {
+func go_mosquitto_auth_psk_key_get(client *C.struct_mosquitto, hint, identity, key *C.char, max_key_len C.int) C.int {
 	panic("AUTH_PSK_KEY_GET IS UNIMPLEMENTED")
 	return C.int(0)
+}
+
+
+// Expose client information
+type Client struct {
+	c *C.struct_mosquitto
+}
+
+func (c *Client) Address() string {
+	cstr := C.mosquitto_client_address(c.c)
+	return C.GoString(cstr)
+}
+
+func (c *Client) CleanSession() bool {
+	x := C.mosquitto_client_clean_session(c.c)
+	return bool(x)
+}
+
+func (c *Client) ClientId() string {
+	cstr := C.mosquitto_client_id(c.c)
+	return C.GoString(cstr)
+}
+
+func (c *Client) KeepAlive() int {
+	x := C.mosquitto_client_keepalive(c.c)
+	return int(x)
+}
+
+// Perhaps implement mosquitto_client_certificate here.. some day...
+
+func (c *Client) Protocol() int {
+	x := C.mosquitto_client_protocol(c.c)
+	return int(x)
+}
+
+func (c *Client) SubCount() int {
+	x := C.mosquitto_client_sub_count(c.c)
+	return int(x)
+}
+
+func (c *Client) Username() string {
+	cstr := C.mosquitto_client_username(c.c)
+	return C.GoString(cstr)
 }
 
 func main() {}
