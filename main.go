@@ -1,10 +1,8 @@
 package main
 
-import (
-)
+import ()
 
-var (
-)
+var ()
 
 func PluginInit(argopts map[string]string) bool {
 	Logf(MOSQ_LOG_INFO, "Hello from PluginInit")
@@ -19,8 +17,8 @@ func PluginCleanup(opts map[string]string) bool {
 	return true
 }
 
-func ACLCheck(client *Client, access int, topic string, payload []byte, qos int, retain bool) bool {
-	Logf(MOSQ_LOG_INFO, "ACL Check %s", topic)
+func ACLCheck(client *Client, access Access, topic string, payload []byte, qos int, retain bool) bool {
+	Logf(MOSQ_LOG_INFO, "ACLCheck %s: %v %v (q%v,r%v)", access, topic, payload, qos, retain)
 	return true
 }
 

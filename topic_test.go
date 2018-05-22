@@ -1,12 +1,12 @@
 package main
 
-import(
+import (
 	"testing"
 )
 
 type SubCase struct {
-	Topic string
-	Subsc string
+	Topic  string
+	Subsc  string
 	Expect bool
 }
 
@@ -18,8 +18,9 @@ var SubCases = []SubCase{
 	{"hello/world", "hello/#", true},
 	{"hello/world", "hello/world/#", true},
 	{"///", "///", true},
-	{"", "", true},
-	{"", "/#", true},
+
+	{"", "", false},   // ????
+	{"", "/#", false}, // ????
 
 	{"hello/world", "hello/world/toolong", false},
 	{"hello/world", "hello/world/+", false},
