@@ -19,8 +19,8 @@ bool topic_match(char* sub, char* topic) {
 	return res;
 }
 
-int mosquitto_auth_acl_check(void* udata, int access, const struct mosquitto* client, struct mosquitto_acl_msg *msg) {
-	return go_mosquitto_auth_acl_check(access, (struct mosquitto*)client, msg);
+int mosquitto_auth_acl_check(void* udata, int access, const struct mosquitto* client, const struct mosquitto_acl_msg *msg) {
+	return go_mosquitto_auth_acl_check(access, (struct mosquitto*)client, (struct mosquitto_acl_msg*)msg);
 }
 
 int mosquitto_auth_unpwd_check(void* udata, const struct mosquitto *client, const char* username, const char* password) {

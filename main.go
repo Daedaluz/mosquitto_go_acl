@@ -19,6 +19,11 @@ func PluginCleanup(opts map[string]string) bool {
 
 func ACLCheck(client *Client, access Access, topic string, payload []byte, qos int, retain bool) bool {
 	Logf(MOSQ_LOG_INFO, "ACLCheck %s: %v %v (q%v,r%v)", access, topic, payload, qos, retain)
+	switch(access) {
+	case MOSQ_ACL_READ:
+	case MOSQ_ACL_WRITE:
+	case MOSQ_ACL_SUBSCRIBE:
+	}
 	return true
 }
 
