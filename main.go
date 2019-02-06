@@ -1,10 +1,8 @@
 package main
 
-import (
-)
+import ()
 
-var (
-)
+var ()
 
 func PluginInit(argopts map[string]string) bool {
 	Logf(MOSQ_LOG_INFO, "Hello from PluginInit")

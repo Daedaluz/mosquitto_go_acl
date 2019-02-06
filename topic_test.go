@@ -1,12 +1,12 @@
 package main
 
-import(
+import (
 	"testing"
 )
 
 type SubCase struct {
-	Topic string
-	Subsc string
+	Topic  string
+	Subsc  string
 	Expect bool
 }
 

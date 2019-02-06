@@ -34,12 +34,28 @@ const (
 	MOSQ_ACL_SUBSCRIBE = C.MOSQ_ACL_SUBSCRIBE
 )
 
+var (
+	_aclMap = map[int]string{
+		MOSQ_ACL_READ:      "READ",
+		MOSQ_ACL_WRITE:     "WRITE",
+		MOSQ_ACL_NONE:      "NONE",
+		MOSQ_ACL_SUBSCRIBE: "SUB",
+	}
+)
+
+type Access int
+
+func (a Access) String() string {
+	return _aclMap[int(a)]
+}
+
 const (
 	MOSQ_ERR_SUCCESS       = C.MOSQ_ERR_SUCCESS
 	MOSQ_ERR_PROTOCOL      = C.MOSQ_ERR_PROTOCOL
 	MOSQ_ERR_NOT_SUPPORTED = C.MOSQ_ERR_NOT_SUPPORTED
 	MOSQ_ERR_AUTH          = C.MOSQ_ERR_AUTH
 	MOSQ_ERR_ACL_DENIED    = C.MOSQ_ERR_ACL_DENIED
+	MOSQ_ERR_PLUGIN_DEFER  = C.MOSQ_ERR_PLUGIN_DEFER
 	MOSQ_ERR_UNKNOWN       = C.MOSQ_ERR_UNKNOWN
 )
 
@@ -52,10 +68,11 @@ const (
 )
 
 // Helper functions
+
 func toOptSlice(opts *C.struct_mosquitto_opt, optcount C.int) []C.struct_mosquitto_opt {
 	var Opts []C.struct_mosquitto_opt
 
-	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&Opts)))
+	sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&Opts))
 	sliceHeader.Cap = int(optcount)
 	sliceHeader.Len = int(optcount)
 	sliceHeader.Data = uintptr(unsafe.Pointer(opts))
@@ -156,7 +173,7 @@ func go_mosquitto_auth_acl_check(access C.int, client *C.struct_mosquitto, msg *
 
 	var Payload []byte
 	if msg.payloadlen != 0 {
-		sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&Payload)))
+		sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&Payload))
 		sliceHeader.Cap = int(msg.payloadlen)
 		sliceHeader.Len = int(msg.payloadlen)
 		sliceHeader.Data = uintptr(unsafe.Pointer(msg.payload))
@@ -180,10 +197,9 @@ func go_mosquitto_auth_unpwd_check(client *C.struct_mosquitto, username, passwor
 
 //export go_mosquitto_auth_psk_key_get
 func go_mosquitto_auth_psk_key_get(client *C.struct_mosquitto, hint, identity, key *C.char, max_key_len C.int) C.int {
-	panic("AUTH_PSK_KEY_GET IS UNIMPLEMENTED")
-	return C.int(0)
+	// TODO: map call to some function in main.go
+	return C.MOSQ_ERR_PLUGIN_DEFER
 }
-
 
 // Expose client information
 type Client struct {
@@ -201,8 +217,8 @@ func (c *Client) CleanSession() bool {
 }
 
 func (c *Client) ClientId() string {
-	cstr := C.mosquitto_client_id(c.c)
-	return C.GoString(cstr)
+	CString := C.mosquitto_client_id(c.c)
+	return C.GoString(CString)
 }
 
 func (c *Client) KeepAlive() int {
