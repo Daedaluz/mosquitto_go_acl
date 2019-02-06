@@ -21,11 +21,27 @@ func PluginCleanup(opts map[string]string) bool {
 
 func ACLCheck(client *Client, access int, topic string, payload []byte, qos int, retain bool) bool {
 	Logf(MOSQ_LOG_INFO, "ACL Check %s", topic)
+	Logf(MOSQ_LOG_INFO, "%v (%v;%v)", payload, qos, retain)
+	Logf(MOSQ_LOG_INFO, "IP: %v", client.Address())
+	Logf(MOSQ_LOG_INFO, "Clean: %v", client.CleanSession())
+	Logf(MOSQ_LOG_INFO, "ClientId: %v", client.ClientId())
+	Logf(MOSQ_LOG_INFO, "KeepAlive: %v", client.KeepAlive())
+	Logf(MOSQ_LOG_INFO, "Protocol: %v", client.Protocol())
+	Logf(MOSQ_LOG_INFO, "SubCount: %v", client.SubCount())
+	Logf(MOSQ_LOG_INFO, "Username: %v", client.Username())
+	Logf(MOSQ_LOG_INFO, "--------------------")
 	return true
 }
 
 func UnpwdCheck(client *Client, username, password string) int {
 	Logf(MOSQ_LOG_INFO, "User %s was granted acces", username)
+	Logf(MOSQ_LOG_INFO, "IP: %v", client.Address())
+	Logf(MOSQ_LOG_INFO, "Clean: %v", client.CleanSession())
+	Logf(MOSQ_LOG_INFO, "ClientId: %v", client.ClientId())
+	Logf(MOSQ_LOG_INFO, "KeepAlive: %v", client.KeepAlive())
+	Logf(MOSQ_LOG_INFO, "Protocol: %v", client.Protocol())
+	Logf(MOSQ_LOG_INFO, "SubCount: %v", client.SubCount())
+	Logf(MOSQ_LOG_INFO, "Username: %v", client.Username())
 	return MOSQ_ERR_SUCCESS
 	// return MOSQ_ERR_AUTH
 }

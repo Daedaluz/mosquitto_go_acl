@@ -155,11 +155,12 @@ func go_mosquitto_auth_acl_check(access C.int, client *C.struct_mosquitto, msg *
 	}
 
 	var Payload []byte
-	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&Payload)))
-	sliceHeader.Cap = int(msg.payloadlen)
-	sliceHeader.Len = int(msg.payloadlen)
-	sliceHeader.Data = uintptr(unsafe.Pointer(msg.payload))
-
+	if msg.payloadlen != 0 {
+		sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&Payload)))
+		sliceHeader.Cap = int(msg.payloadlen)
+		sliceHeader.Len = int(msg.payloadlen)
+		sliceHeader.Data = uintptr(unsafe.Pointer(msg.payload))
+	}
 	x := ACLCheck(c, int(access), C.GoString(msg.topic), Payload, int(msg.qos), bool(msg.retain))
 	if x {
 		return C.MOSQ_ERR_SUCCESS
